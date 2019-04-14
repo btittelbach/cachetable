@@ -1,6 +1,6 @@
 ### CacheTable
 
-A quick and naive golang implementation of a CacheTable as described in Fabian "ryg" Giesen's [blog](https://fgiesen.wordpress.com/2019/02/11/cache-tables/):
+A quick and naive golang implementation of a CacheTable as described in [Fabian "ryg" Giesen's blog](https://fgiesen.wordpress.com/2019/02/11/cache-tables/)
 
 Based on the naive hashmap code of Prakhar Srivastav.
 
