@@ -1,6 +1,6 @@
-### CacheMap
+### CacheTable
 
-A naive implementation of  ... CacheM described in his blog here:
+A quick and naive golang implementation of a CacheTable as described in Fabian "ryg" Giesen's (blog)[https://fgiesen.wordpress.com/2019/02/11/cache-tables/]:
 
 Based on the naive hashmap code of Prakhar Srivastav.
 
@@ -11,11 +11,11 @@ package main
 
 import (
     "fmt"
-    "github.com/prakhar1989/hashmap"
+    "github.com/btittelbach/cachetable"
 )
 
 func main() {
-    h, _ := hashmap.NewCacheMap(100,20) // create the hashmap
+    h, _ := cachetable.NewCacheTable(100,20) // create the cachetable
     keys := []string{"alpha", "beta", "charlie", "gamma", "delta"}
 
     // add the keys

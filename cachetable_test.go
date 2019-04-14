@@ -5,74 +5,97 @@ import (
 	"testing"
 )
 
-func TestNewCacheTable(t *testing.T) {
+func TestNewCacheTableInit(t *testing.T) {
 	cases := []struct {
-		in, want int
+		ina, inb int
 	}{
 		{10, 10},
-		{20, 20},
+		{10, 2},
 		{0, 0},
+		{1, 0},
+		{1, 1},
 	}
 
-	for _, c := range cases {
-		h, err := NewCacheTable(c.in)
-		if c.in == 0 && err == nil {
-			t.Errorf("Expected error, didn't get it")
-		} else {
-			if h.size != c.want {
-				t.Errorf("NewCacheTable(%q) == %q, want %q", c.in, h.size, c.want)
+	mytest := func(prealloc bool) {
+		for _, c := range cases {
+			h, err := NewCacheTable(c.ina, c.inb, prealloc)
+			if c.ina == 0 || c.inb == 0 {
+				if err == nil {
+					t.Errorf("Expected error, didn't get it")
+				}
+			} else {
+				if h == nil || err != nil {
+					t.Errorf("NewCacheTable(%d,%d) threw unexpected error: %s", c.ina, c.inb, err)
+				}
+				if h.numbuckets != c.ina || h.bucketcapacity != c.inb {
+					t.Errorf("NewCacheTable(%d,%d) == %d,%d", c.ina, c.inb, h.numbuckets, h.bucketcapacity)
+				}
 			}
 		}
 	}
+	mytest(false) //don't preallocate
+	mytest(true)  //preallocated
 }
 
-func TestSize(t *testing.T) {
+func TestNewCacheTableCapacity(t *testing.T) {
 	cases := []struct {
-		in, want int
+		ina, inb int
 	}{
 		{10, 10},
-		{20, 20},
+		{10, 2},
+		{0, 0},
+		{1, 0},
+		{1, 1},
 	}
 
-	for _, c := range cases {
-		h, _ := NewCacheTable(c.in)
-		got := h.Size()
-		if got != c.want {
-			t.Errorf("Size(%d) == %d, want %d", c.in, got, c.want)
+	mytest := func(prealloc bool) {
+		for _, c := range cases {
+			h, err := NewCacheTable(c.ina, c.inb, prealloc)
+			if c.ina == 0 || c.inb == 0 {
+				if err == nil {
+					t.Errorf("Expected error, didn't get it")
+				}
+			} else {
+				if h.Capacity() != c.ina*c.inb {
+					t.Errorf("NewCacheTable(%q,%q).Capacity() == %q, want %q", c.ina, c.inb, h.Capacity(), c.ina*c.inb)
+				}
+			}
 		}
 	}
+	mytest(false) //don't preallocate
+	mytest(true)  //preallocated
 }
 
 func TestLenAndLoad(t *testing.T) {
 	cases := []struct {
-		in, want int
+		ina, inb, want int
 	}{
-		{10, 10},
-		{20, 20},
+		{10, 1, 10},
+		{10, 2, 20},
 	}
 
 	for _, c := range cases {
-		h, _ := NewCacheTable(c.in * 10)
-		for i := 1; i <= c.in; i++ {
+		h, _ := NewCacheTable(c.ina, c.inb*10, true)
+		for i := 1; i <= c.ina*c.inb; i++ {
 			key := strconv.Itoa(i)
-			h.Set(key, c.in*10)
+			h.Set(key, i)
 		}
 		got := h.Len()
 		if got != c.want {
-			t.Errorf("Len(%d) == %d, want %d", c.in, got, c.want)
+			t.Errorf("Len(%d,%d) == %d, want %d", c.ina, c.inb, got, c.want)
 		}
 
 		load := h.Load()
-		want := float32(c.in) / float32(c.in*10)
+		want := float32(c.ina*c.inb) / float32(c.ina*c.inb*10)
 		if load != want {
-			t.Errorf("Load(%d) == %f, want %f", c.in, load, want)
+			t.Errorf("Load(%d) == %f, want %f", c.ina, load, want)
 		}
 	}
 }
 
 func TestGetAndSet(t *testing.T) {
-	h, _ := NewCacheTable(100)
-	keys := []string{"alpha", "beta", "charlie", "gamma", "delta"}
+	h, _ := NewCacheTable(10, 10, true)
+	keys := []string{"alpha5", "beta4", "charlie7", "gamma_6", "delta__8"}
 
 	// testing primitives
 	for _, key := range keys {
@@ -111,44 +134,104 @@ func TestGetAndSet(t *testing.T) {
 	}
 }
 
-func TestCollisions(t *testing.T) {
-	// a small hashmap that is bound to have collisions
-	h, _ := NewCacheTable(5)
+func TestCollisionsAndMemoryConstrain(t *testing.T) {
+	// a small cachetable that is bound to have collisions
+	numbuckets := 2
+	bucketcap := 2
+	h, _ := NewCacheTable(numbuckets, bucketcap, true)
 
-	keys := []string{"alpha", "beta", "charlie", "gamma", "delta"}
+	keys := []string{"alpha5", "beta4", "charlie7", "gamma_6", "delta__8"}
 
-	for _, key := range keys {
-		h.Set(key, len(key))
+	if h.Capacity() != numbuckets*bucketcap {
+		t.Errorf("Wrong Capacity")
 	}
 
 	for _, key := range keys {
-		got, _ := h.Get(key)
-		want := len(key)
-		if got.Value.(int) != len(key) {
-			t.Errorf("want: %q, got: %q", want, got)
+		h.Set(key, len(key))
+		if h.Len() > numbuckets*bucketcap {
+			t.Errorf("Constraint did not work, buckets magically increased")
 		}
+	}
+
+	number_of_items_recovered := 0
+	for _, key := range keys {
+		got, inmap := h.Get(key)
+		want := len(key)
+		if inmap && got.Value.(int) == want {
+			number_of_items_recovered++
+		}
+	}
+	if number_of_items_recovered != numbuckets*bucketcap {
+		t.Errorf("expected to recover %q elements but got %q", numbuckets*bucketcap, number_of_items_recovered)
+	}
+}
+
+func TestOverwrite(t *testing.T) {
+	// a cachetable with just one elem
+	h, _ := NewCacheTable(1, 1, true)
+	keya := "alpha"
+	keyb := "beta"
+	vala := 10
+	valb := 20
+	var status bool
+
+	h.Set(keya, vala)
+
+	// verify alpha is there
+	got, inmap := h.Get(keya)
+	if inmap == false || got.Value.(int) != vala {
+		t.Errorf("Element just added not found!")
+	}
+
+	// add beta now
+	status = h.Set(keyb, valb)
+	if !status {
+		t.Errorf("Unable to add element")
+	}
+
+	// verify beta is there
+	got, inmap = h.Get(keyb)
+	if inmap == false || got.Value.(int) != valb {
+		t.Errorf("Element just added not found!")
+	}
+
+	// verify alpha is gone
+	got, inmap = h.Get(keya)
+	if inmap == false || got != nil {
+		t.Errorf("Found element we should have overwritten!")
 	}
 }
 
 func TestDelete(t *testing.T) {
-	// a hashtable with just one elem
-	h, _ := NewCacheTable(1)
-	h.Set("alpha", 10)
+	// a cachetable with just one elem
+	h, _ := NewCacheTable(1, 1, true)
+	var status bool
+	keya := "alpha"
+	keyb := "beta"
+	vala := 10
+	valb := 20
+	h.Set(keya, vala)
 
-	// should not be allowed to add
-	status := h.Set("beta", 20)
-	if status {
-		t.Errorf("Able to add more elements than the allowed size")
+	// verify it's there
+	got, inmap := h.Get(keya)
+	if inmap == false || got.Value.(int) != vala {
+		t.Errorf("Element just added not found!")
 	}
 
-	// lets delete first
-	_, status = h.Delete("alpha")
+	// lets delete it
+	_, status = h.Delete(keya)
 	if !status {
 		t.Errorf("Unable to delete")
 	}
 
-	// and add beta now
-	status = h.Set("beta", 20)
+	// verify it's gone
+	got, inmap = h.Get(keya)
+	if inmap == false || got != nil {
+		t.Errorf("Found element we just deleted!")
+	}
+
+	// add beta now
+	status = h.Set(keyb, valb)
 	if !status {
 		t.Errorf("Unable to add element")
 	}
