@@ -3,12 +3,15 @@ package main
 import (
 	"fmt"
 
-	"github.com/prakhar1989/hashmap"
+	"github.com/btittelbach/cachetable"
 )
 
 func main() {
-	h, _ := hashmap.NewHashMap(20)
-
+	/// create the cachetable with
+	/// - 100 buckets
+	/// - max 20 elements per bucket
+	/// - immediately allocated memory for all buckets
+	h, _ := cachetable.NewCacheTable(100, 20, true)
 	keys := []string{"alpha", "beta", "charlie", "gamma", "delta"}
 
 	// add the keys
