@@ -4,7 +4,14 @@ A quick and naive golang implementation of a CacheTable as described in Fabian "
 
 Based on the naive hashmap code of Prakhar Srivastav.
 
-### Usage
+## Purpose
+
+It's a Hashtable like the golang map with constrained or constant memory use and an upper bound on lookup time.
+
+The downside, is that older elements will get overwritten in time.
+
+
+## Usage
 
 ```go
 package main
@@ -15,7 +22,11 @@ import (
 )
 
 func main() {
-    h, _ := cachetable.NewCacheTable(100,20) // create the cachetable
+    /// create the cachetable with
+    /// - 100 buckets
+    /// - max 20 elements per bucket
+    /// - immediately allocated memory for all buckets
+    h, _ := cachetable.NewCacheTable(100,20,true)
     keys := []string{"alpha", "beta", "charlie", "gamma", "delta"}
 
     // add the keys
@@ -45,3 +56,7 @@ func main() {
     }
 }
 ```
+
+## Todo
+
+[ ] After 2^64-1 inserts, the internal 'time'-counter will overflow. Before this happens, we need to compress the create_time numbering. This function is not yet implemented.

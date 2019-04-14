@@ -96,7 +96,8 @@ func (h *CacheTable) Get(key string) (*Node, bool) {
 }
 
 // Set the value for an associated key in the cachetable
-func (h *CacheTable) Set(key string, value interface{}) bool {
+// this always success as it will just overwrite the oldest element in the bucket
+func (h *CacheTable) Set(key string, value interface{}) {
 	index := h.getIndex(key)
 	chain := h.buckets[index]
 
@@ -109,7 +110,7 @@ func (h *CacheTable) Set(key string, value interface{}) bool {
 		node := &chain[i]
 		if node.key == key {
 			node.Value = value
-			return true
+			return
 		}
 		if node.create_time < oldest_time {
 			oldest_index = i
@@ -136,7 +137,7 @@ func (h *CacheTable) Set(key string, value interface{}) bool {
 		h.buckets[index] = chain
 		h.count++
 	}
-	return true
+	return
 }
 
 // Delete the value associated with key in the cachetable

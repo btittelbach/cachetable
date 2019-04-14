@@ -173,7 +173,6 @@ func TestOverwrite(t *testing.T) {
 	keyb := "beta"
 	vala := 10
 	valb := 20
-	var status bool
 
 	// verify Stats
 	if h.Len() != 0 {
@@ -199,10 +198,7 @@ func TestOverwrite(t *testing.T) {
 	}
 
 	// add beta now
-	status = h.Set(keyb, valb)
-	if !status {
-		t.Errorf("Unable to add element")
-	}
+	h.Set(keyb, valb)
 
 	if h.Len() != 1 {
 		t.Errorf("Len incorrect. Got %d, Want %d", h.Len(), 1)
@@ -275,10 +271,7 @@ func TestDelete(t *testing.T) {
 	}
 
 	// add beta now
-	status = h.Set(keyb, valb)
-	if !status {
-		t.Errorf("Unable to add element")
-	}
+	h.Set(keyb, valb)
 
 	// lastly, lets delete a non-existent element
 	_, status = h.Delete("gamma")
