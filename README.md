@@ -1,8 +1,8 @@
-### Hashmap
+### CacheMap
 
-A naive implementation of a Hash map in Golang.
+A naive implementation of  ... CacheM described in his blog here:
 
-Nothing interesting to see here... move along. :runner:
+Based on the naive hashmap code of Prakhar Srivastav.
 
 ### Usage
 
@@ -15,7 +15,7 @@ import (
 )
 
 func main() {
-    h, _ := hashmap.NewHashMap(100) // create the hashmap
+    h, _ := hashmap.NewCacheMap(100,20) // create the hashmap
     keys := []string{"alpha", "beta", "charlie", "gamma", "delta"}
 
     // add the keys

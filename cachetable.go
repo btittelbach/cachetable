@@ -1,4 +1,4 @@
-package cachemap
+package cachetable
 
 import "errors"
 
@@ -9,10 +9,10 @@ type Node struct {
 	create_time uint64
 }
 
-// HashMap implemented with a fixed bucketsize.
+// CacheTable implemented with a fixed bucketsize.
 // // NOPE: Uses chaining to resolve collisions.
 // removes oldest element in bucket
-type HashMap struct {
+type CacheTable struct {
 	current_time uint64
 	bucketsize   int
 	numbuckets   int
@@ -23,7 +23,7 @@ type HashMap struct {
 /** PRIVATE METHODS **/
 
 // returns the index at which the key needs to go
-func (h *HashMap) getIndex(key string) int {
+func (h *CacheTable) getIndex(key string) int {
 	return int(hash(key)) % h.numbuckets
 }
 
@@ -44,19 +44,19 @@ func hash(key string) uint32 {
 /** PUBLIC METHODS **/
 
 // Len returns the count of the elements in the hashmap
-func (h *HashMap) Len() int {
+func (h *CacheTable) Len() int {
 	return h.count
 }
 
 // Size returns the bucket size of the hashamp
-func (h *HashMap) BucketSize() int {
+func (h *CacheTable) BucketSize() int {
 	return h.bucketsize
 }
 
-// NewCacheMap is the constuctor that returns a new HashMap of a fixed size
+// NewCacheTable is the constuctor that returns a new CacheTable of a fixed size
 // returns an error when a size of 0 is provided
-func NewCacheMap(numbuckets, bucketsize int) (*HashMap, error) {
-	h := new(HashMap)
+func NewCacheTable(numbuckets, bucketsize int) (*CacheTable, error) {
+	h := new(CacheTable)
 	if bucketsize < 1 {
 		return h, errors.New("bucketsize of hashmap has to be > 1")
 	}
@@ -73,7 +73,7 @@ func NewCacheMap(numbuckets, bucketsize int) (*HashMap, error) {
 
 // Get returns the value associated with a key in the hashmap,
 // and an error indicating whether the value exists
-func (h *HashMap) Get(key string) (*Node, bool) {
+func (h *CacheTable) Get(key string) (*Node, bool) {
 	index := h.getIndex(key)
 	chain := h.buckets[index]
 	for _, node := range chain {
@@ -85,7 +85,7 @@ func (h *HashMap) Get(key string) (*Node, bool) {
 }
 
 // Set the value for an associated key in the hashmap
-func (h *HashMap) Set(key string, value interface{}) bool {
+func (h *CacheTable) Set(key string, value interface{}) bool {
 	index := h.getIndex(key)
 	chain := h.buckets[index]
 
@@ -108,7 +108,7 @@ func (h *HashMap) Set(key string, value interface{}) bool {
 
 	// if key doesn't exist, add it to the hashmap
 	newnode := Node{key: key, Value: value, create_time: h.current_time}
-	h.current_time++ //increment cachemap insert time
+	h.current_time++ //increment cachetable insert time
 
 	//before the roll-over, compress time
 	if h.current_time == 1<<64-1 {
@@ -129,7 +129,7 @@ func (h *HashMap) Set(key string, value interface{}) bool {
 }
 
 // Delete the value associated with key in the hashmap
-func (h *HashMap) Delete(key string) (*Node, bool) {
+func (h *CacheTable) Delete(key string) (*Node, bool) {
 	index := h.getIndex(key)
 	chain := h.buckets[index]
 
@@ -161,11 +161,11 @@ func (h *HashMap) Delete(key string) (*Node, bool) {
 }
 
 // Load returns the load factor of the hashmap
-func (h *HashMap) Load() float32 {
+func (h *CacheTable) Load() float32 {
 	return float32(h.count) / float32(h.bucketsize*h.numbuckets)
 }
 
-func (h *HashMap) CompressTime() {
+func (h *CacheTable) CompressTime() {
 	//TODO
 	//put pointers to all nodes into a big list of size h.size
 	//sort list by create-time
