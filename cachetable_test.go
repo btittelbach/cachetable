@@ -175,7 +175,22 @@ func TestOverwrite(t *testing.T) {
 	valb := 20
 	var status bool
 
+	// verify Stats
+	if h.Len() != 0 {
+		t.Errorf("Len incorrect. Got %d, Want %d", h.Len(), 0)
+	}
+	if h.Capacity() != 1 {
+		t.Errorf("Len incorrect. Got %d, Want %d", h.Capacity(), 1*1)
+	}
+
 	h.Set(keya, vala)
+
+	if h.Len() != 1 {
+		t.Errorf("Len incorrect. Got %d, Want %d", h.Len(), 1)
+	}
+	if h.Capacity() != 1 {
+		t.Errorf("Len incorrect. Got %d, Want %d", h.Capacity(), 1*1)
+	}
 
 	// verify alpha is there
 	got, inmap := h.Get(keya)
@@ -189,6 +204,13 @@ func TestOverwrite(t *testing.T) {
 		t.Errorf("Unable to add element")
 	}
 
+	if h.Len() != 1 {
+		t.Errorf("Len incorrect. Got %d, Want %d", h.Len(), 1)
+	}
+	if h.Capacity() != 1 {
+		t.Errorf("Len incorrect. Got %d, Want %d", h.Capacity(), 1*1)
+	}
+
 	// verify beta is there
 	got, inmap = h.Get(keyb)
 	if inmap == false || got.Value.(int) != valb {
@@ -197,8 +219,8 @@ func TestOverwrite(t *testing.T) {
 
 	// verify alpha is gone
 	got, inmap = h.Get(keya)
-	if inmap == false || got != nil {
-		t.Errorf("Found element we should have overwritten!")
+	if inmap == true || got != nil {
+		t.Errorf("Found element we should have overwritten! h.len: %d", h.Len())
 	}
 }
 
@@ -210,7 +232,22 @@ func TestDelete(t *testing.T) {
 	keyb := "beta"
 	vala := 10
 	valb := 20
+
+	if h.Len() != 0 {
+		t.Errorf("Len incorrect. Got %d, Want %d", h.Len(), 0)
+	}
+	if h.Capacity() != 1 {
+		t.Errorf("Len incorrect. Got %d, Want %d", h.Capacity(), 1*1)
+	}
+
 	h.Set(keya, vala)
+
+	if h.Len() != 1 {
+		t.Errorf("Len incorrect. Got %d, Want %d", h.Len(), 1)
+	}
+	if h.Capacity() != 1 {
+		t.Errorf("Len incorrect. Got %d, Want %d", h.Capacity(), 1*1)
+	}
 
 	// verify it's there
 	got, inmap := h.Get(keya)
@@ -226,8 +263,15 @@ func TestDelete(t *testing.T) {
 
 	// verify it's gone
 	got, inmap = h.Get(keya)
-	if inmap == false || got != nil {
+	if inmap == true || got != nil {
 		t.Errorf("Found element we just deleted!")
+	}
+
+	if h.Len() != 0 {
+		t.Errorf("Len incorrect. Got %d, Want %d", h.Len(), 0)
+	}
+	if h.Capacity() != 1 {
+		t.Errorf("Len incorrect. Got %d, Want %d", h.Capacity(), 1*1)
 	}
 
 	// add beta now
@@ -240,5 +284,54 @@ func TestDelete(t *testing.T) {
 	_, status = h.Delete("gamma")
 	if status {
 		t.Errorf("Deleted a missing key")
+	}
+
+	if h.Len() != 1 {
+		t.Errorf("Len incorrect. Got %d, Want %d", h.Len(), 1)
+	}
+	if h.Capacity() != 1 {
+		t.Errorf("Len incorrect. Got %d, Want %d", h.Capacity(), 1*1)
+	}
+}
+
+func TestAging(t *testing.T) {
+	// a small cachetable that is bound to have collisions
+	numbuckets := 1
+	bucketcap := 3
+	h, _ := NewCacheTable(numbuckets, bucketcap, true)
+
+	keys := []string{"alpha5", "beta4", "charlie7", "gamma_6", "delta__8", "tst3"}
+
+	if len(keys) <= numbuckets*bucketcap {
+		t.Error("The test does not work that way, we need more keys than capacity")
+	}
+
+	if h.Capacity() != numbuckets*bucketcap {
+		t.Errorf("Wrong Capacity")
+	}
+
+	for idx, key := range keys {
+		h.Set(key, len(key))
+		//check if correct number of nodes in cachetable
+		if (h.Len() < h.Capacity() && h.Len() != idx+1) || h.Len() > h.Capacity() || (idx > h.Len() && h.Len() != h.Capacity()) {
+			t.Errorf("Something is wrong here: idx: %d, len: %d, capacity: %d", idx, h.Len(), h.Capacity())
+		}
+	}
+
+	//verify the oldest elements are now missing
+	for idx := 0; idx < len(keys)-numbuckets*bucketcap; idx++ {
+		got, inmap := h.Get(keys[idx])
+		if inmap || got != nil {
+			t.Errorf("Found Element %d:%s in map even though it should have been overwritten", idx, keys[idx])
+		}
+	}
+
+	//check only the newest elements are in cachetable
+	for idx := len(keys) - numbuckets*bucketcap; idx < len(keys); idx++ {
+		got, inmap := h.Get(keys[idx])
+		want := len(keys[idx])
+		if !inmap || got.Value.(int) != want {
+			t.Errorf("Could not find Element %d:%s in map even though it should be there", idx, keys[idx])
+		}
 	}
 }
