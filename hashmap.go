@@ -1,26 +1,30 @@
-package hashmap
+package cachemap
 
 import "errors"
 
 // Node which is stored at each level
 type Node struct {
-	key   string
-	Value interface{}
+	key         string
+	Value       interface{}
+	create_time uint64
 }
 
-// HashMap implemented with a fixed size.
-// Uses chaining to resolve collisions.
+// HashMap implemented with a fixed bucketsize.
+// // NOPE: Uses chaining to resolve collisions.
+// removes oldest element in bucket
 type HashMap struct {
-	size    int
-	count   int
-	buckets [][]Node
+	current_time uint64
+	bucketsize   int
+	numbuckets   int
+	count        int
+	buckets      [][]Node
 }
 
 /** PRIVATE METHODS **/
 
 // returns the index at which the key needs to go
 func (h *HashMap) getIndex(key string) int {
-	return int(hash(key)) % h.size
+	return int(hash(key)) % h.numbuckets
 }
 
 // Implements the Jenkins hash function
@@ -44,21 +48,23 @@ func (h *HashMap) Len() int {
 	return h.count
 }
 
-// Size returns the size of the hashamp
-func (h *HashMap) Size() int {
-	return h.size
+// Size returns the bucket size of the hashamp
+func (h *HashMap) BucketSize() int {
+	return h.bucketsize
 }
 
-// NewHashMap is the constuctor that returns a new HashMap of a fixed size
+// NewCacheMap is the constuctor that returns a new HashMap of a fixed size
 // returns an error when a size of 0 is provided
-func NewHashMap(size int) (*HashMap, error) {
+func NewCacheMap(numbuckets, bucketsize int) (*HashMap, error) {
 	h := new(HashMap)
-	if size < 1 {
-		return h, errors.New("size of hashmap has to be > 1")
+	if bucketsize < 1 {
+		return h, errors.New("bucketsize of hashmap has to be > 1")
 	}
-	h.size = size
+	h.bucketsize = bucketsize
+	h.numbuckets = numbuckets
 	h.count = 0
-	h.buckets = make([][]Node, size)
+	h.current_time = 0
+	h.buckets = make([][]Node, numbuckets)
 	for i := range h.buckets {
 		h.buckets[i] = make([]Node, 0)
 	}
@@ -82,33 +88,43 @@ func (h *HashMap) Get(key string) (*Node, bool) {
 func (h *HashMap) Set(key string, value interface{}) bool {
 	index := h.getIndex(key)
 	chain := h.buckets[index]
-	found := false
 
 	// first see if the key already exists
+	// also find oldest element in case it does not
+	oldest_time := uint64(1<<64 - 1)
+	oldest_index := 0
 	for i := range chain {
 		// if found, update the value
 		node := &chain[i]
 		if node.key == key {
 			node.Value = value
-			found = true
+			return true
 		}
-	}
-	if found { // hashmap has been updated
-		return true
+		if node.create_time < oldest_time {
+			oldest_index = i
+			oldest_time = node.create_time
+		}
 	}
 
 	// if key doesn't exist, add it to the hashmap
-	// first check whether space exists
-	if h.size == h.count {
-		return false
+	newnode := Node{key: key, Value: value, create_time: h.current_time}
+	h.current_time++ //increment cachemap insert time
+
+	//before the roll-over, compress time
+	if h.current_time == 1<<64-1 {
+		h.CompressTime()
+		newnode.create_time = h.current_time
 	}
 
-	// yup there's space, let's add a new node
-	node := Node{key: key, Value: value}
-	chain = append(chain, node)
-	h.buckets[index] = chain
-	h.count++
-
+	// it bucket is full, overwrite oldest element
+	if len(chain) >= h.bucketsize {
+		chain[oldest_index] = newnode
+	} else {
+		// there's enough space, let's append the node
+		chain = append(chain, newnode)
+		h.buckets[index] = chain
+		h.count++
+	}
 	return true
 }
 
@@ -146,5 +162,13 @@ func (h *HashMap) Delete(key string) (*Node, bool) {
 
 // Load returns the load factor of the hashmap
 func (h *HashMap) Load() float32 {
-	return float32(h.count) / float32(h.size)
+	return float32(h.count) / float32(h.bucketsize*h.numbuckets)
+}
+
+func (h *HashMap) CompressTime() {
+	//TODO
+	//put pointers to all nodes into a big list of size h.size
+	//sort list by create-time
+	//give each node a new incremental number
+	//set h.current_time to next free number
 }

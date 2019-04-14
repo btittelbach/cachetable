@@ -1,11 +1,11 @@
-package hashmap
+package cachemap
 
 import (
 	"strconv"
 	"testing"
 )
 
-func TestNewHashMap(t *testing.T) {
+func TestNewCacheMap(t *testing.T) {
 	cases := []struct {
 		in, want int
 	}{
@@ -15,12 +15,12 @@ func TestNewHashMap(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		h, err := NewHashMap(c.in)
+		h, err := NewCacheMap(c.in)
 		if c.in == 0 && err == nil {
 			t.Errorf("Expected error, didn't get it")
 		} else {
 			if h.size != c.want {
-				t.Errorf("NewHashMap(%q) == %q, want %q", c.in, h.size, c.want)
+				t.Errorf("NewCacheMap(%q) == %q, want %q", c.in, h.size, c.want)
 			}
 		}
 	}
@@ -35,7 +35,7 @@ func TestSize(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		h, _ := NewHashMap(c.in)
+		h, _ := NewCacheMap(c.in)
 		got := h.Size()
 		if got != c.want {
 			t.Errorf("Size(%d) == %d, want %d", c.in, got, c.want)
@@ -52,7 +52,7 @@ func TestLenAndLoad(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		h, _ := NewHashMap(c.in * 10)
+		h, _ := NewCacheMap(c.in * 10)
 		for i := 1; i <= c.in; i++ {
 			key := strconv.Itoa(i)
 			h.Set(key, c.in*10)
@@ -71,7 +71,7 @@ func TestLenAndLoad(t *testing.T) {
 }
 
 func TestGetAndSet(t *testing.T) {
-	h, _ := NewHashMap(100)
+	h, _ := NewCacheMap(100)
 	keys := []string{"alpha", "beta", "charlie", "gamma", "delta"}
 
 	// testing primitives
@@ -113,7 +113,7 @@ func TestGetAndSet(t *testing.T) {
 
 func TestCollisions(t *testing.T) {
 	// a small hashmap that is bound to have collisions
-	h, _ := NewHashMap(5)
+	h, _ := NewCacheMap(5)
 
 	keys := []string{"alpha", "beta", "charlie", "gamma", "delta"}
 
@@ -132,7 +132,7 @@ func TestCollisions(t *testing.T) {
 
 func TestDelete(t *testing.T) {
 	// a hashtable with just one elem
-	h, _ := NewHashMap(1)
+	h, _ := NewCacheMap(1)
 	h.Set("alpha", 10)
 
 	// should not be allowed to add
