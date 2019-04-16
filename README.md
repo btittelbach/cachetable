@@ -56,7 +56,3 @@ func main() {
     }
 }
 ```
-
-## Todo
-
-[ ] After 2^64-1 inserts, the internal 'time'-counter will overflow. Before this happens, we need to compress the create_time numbering. This function is not yet implemented.
