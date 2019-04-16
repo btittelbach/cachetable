@@ -328,3 +328,139 @@ func TestAging(t *testing.T) {
 		}
 	}
 }
+
+func TestUintRolloverSafety(t *testing.T) {
+	type RolloverTest struct {
+		current_time uint
+		times        []uint
+		want_index   int
+	}
+
+	//test
+	rotest := func(test RolloverTest) {
+		chain := make([]Node, len(test.times))
+		for i, time := range test.times {
+			chain[i].create_time = time
+		}
+		if index_found, _ := findElementOrOldestIndex(chain, test.current_time, "a key not of this chain"); index_found != test.want_index {
+			t.Errorf("Failed to find oldest index after rollover. index_found: %d != want:%d, current_time:%d, times:%+v", index_found, test.want_index, test.current_time, test.times)
+		}
+	}
+
+	//just some examples that test go behaves as expected
+	rotest(RolloverTest{
+		current_time: 4,
+		times:        []uint{0, 1, 2, 3, 4, MaxUint - 1, MaxUint - 2, MaxUint - 3, MaxUint - 4},
+		want_index:   4,
+	})
+	rotest(RolloverTest{
+		current_time: MaxUint / 2,
+		times:        []uint{0, 1, 2, 3, 4, MaxUint/2 - 1},
+		want_index:   0,
+	})
+	rotest(RolloverTest{
+		current_time: MaxUint / 2,
+		times:        []uint{0, 1, 2, 3, 4, MaxUint/2 + 1},
+		want_index:   5,
+	})
+	rotest(RolloverTest{
+		current_time: MaxUint / 2,
+		times:        []uint{0, 1, 2, 3, 4, MaxUint / 2, MaxUint/2 + 1},
+		want_index:   5,
+	})
+	rotest(RolloverTest{
+		current_time: 0,
+		times:        []uint{0, 1, 2, 3, 4, MaxUint/2 - 10},
+		want_index:   0,
+	})
+	rotest(RolloverTest{
+		current_time: MaxUint,
+		times:        []uint{0, 1, 2, 3, 4, MaxUint/2 - 10, MaxUint - 1},
+		want_index:   0,
+	})
+	rotest(RolloverTest{
+		current_time: MaxUint,
+		times:        []uint{0, 1, 2, 3, 4, MaxUint/2 - 10, MaxUint - 1, MaxUint},
+		want_index:   7,
+	})
+	//verify <=
+	rotest(RolloverTest{
+		current_time: 3,
+		times:        []uint{2, 2},
+		want_index:   1,
+	})
+	//verify <= and direction of range
+	rotest(RolloverTest{
+		current_time: 0,
+		times:        []uint{0, 1, 2, 3, 4, MaxUint/2 - 10, MaxUint - 1, MaxUint, 0},
+		want_index:   8,
+	})
+}
+
+func TestElementIsFoundRatherThanOldest(t *testing.T) {
+	type FindTest struct {
+		current_time uint
+		times        []uint
+		want_index   int
+	}
+
+	//test
+	rotest := func(test FindTest) {
+		testkey := "TestKey"
+		chain := make([]Node, len(test.times))
+		for i, time := range test.times {
+			chain[i].create_time = time
+		}
+		chain[test.want_index].key = testkey
+		if index_found, inchain := findElementOrOldestIndex(chain, test.current_time, testkey); inchain == false || index_found != test.want_index {
+			t.Errorf("Failed to find element at expected index: inchain:%+v, index_found: %d != want:%d, current_time:%d, times:%+v", inchain, index_found, test.want_index, test.current_time, test.times)
+		}
+	}
+
+	//just some examples that test go behaves as expected
+	rotest(FindTest{
+		current_time: 4,
+		times:        []uint{0, 1, 2, 3, 4, MaxUint - 1, MaxUint - 2, MaxUint - 3, MaxUint - 4},
+		want_index:   5,
+	})
+	rotest(FindTest{
+		current_time: MaxUint / 2,
+		times:        []uint{0, 1, 2, 3, 4, MaxUint/2 - 1},
+		want_index:   2,
+	})
+	rotest(FindTest{
+		current_time: MaxUint / 2,
+		times:        []uint{0, 1, 2, 3, 4, MaxUint/2 + 1},
+		want_index:   2,
+	})
+	rotest(FindTest{
+		current_time: MaxUint / 2,
+		times:        []uint{0, 1, 2, 3, 4, MaxUint / 2, MaxUint/2 + 1},
+		want_index:   3,
+	})
+	rotest(FindTest{
+		current_time: 0,
+		times:        []uint{0, 1, 2, 3, 4, MaxUint/2 - 10},
+		want_index:   1,
+	})
+	rotest(FindTest{
+		current_time: MaxUint,
+		times:        []uint{0, 1, 2, 3, 4, MaxUint/2 - 10, MaxUint - 1},
+		want_index:   3,
+	})
+	rotest(FindTest{
+		current_time: MaxUint,
+		times:        []uint{0, 1, 2, 3, 4, MaxUint/2 - 10, MaxUint - 1, MaxUint},
+		want_index:   2,
+	})
+	rotest(FindTest{
+		current_time: 3,
+		times:        []uint{2, 2},
+		want_index:   0,
+	})
+	rotest(FindTest{
+		current_time: 0,
+		times:        []uint{0, 1, 2, 3, 4, MaxUint/2 - 10, MaxUint - 1, MaxUint, 0},
+		want_index:   1,
+	})
+}
